@@ -120,8 +120,10 @@ class Plugin():
              
     def get_root_menu(self):
         self.add_dir(self.mcicon,{'Title':'Mormon Channel','Plot':'Watch and listen to content from the Mormon Channel'},{'name':'Mormon Channel','mode':14},self.mcfanart)
-        self.add_dir(self.byuicon,{'Title':'BYU TV','Plot':'Watch videos from BYU TV'},{'name':'BYU TV','mode':1},self.byufanart)
-        self.add_dir(self.ldsicon,{'Title':'LDS.org','Plot':'Watch videos from LDS.org'},{'name':'LDS.org','mode':1})
+        self.add_dir(self.byuicon,{'Title':'BYU TV','Plot':'Watch videos from BYU TV'},
+	    {'name':'BYU TV','mode':200},self.byufanart)
+        self.add_dir(self.ldsicon,{'Title':'LDS.org','Plot':'Watch videos from LDS.org'},
+	    {'name':'LDS.org','mode':100})
 
 class LDSORG(Plugin):
     def __init__(self):
@@ -377,27 +379,26 @@ class BYUTV(Plugin):
         self.add_dir(self.icon,{'Title':'Ever','Plot':'Watch the most viewed episodes of all time'},
                 {'name':'Ever','mode':11,'guid':'N/A','submode':3})
 
+def pint(p, key):
+    try:
+        return int(p[key])
+    except:
+        return None
+
+def purl(p, key):
+    try:
+        return urllib.unquote_plus(p[key])
+    except:
+        return None
 
 def main():
     xbmcplugin.setContent(HANDLE, 'tvshows')
     params=get_params()
     
-    try:
-        url=urllib.unquote_plus(params["url"])
-    except:
-        url=None
-    try:
-        name=urllib.unquote_plus(params["name"])
-    except:
-        name=None
-    try:
-        mode=int(params["mode"])
-    except:
-        mode=None
-    try:
-        submode=int(params["submode"])
-    except:
-        submode=None
+    url = purl(params, "url")
+    name = purl(params, "name")
+    mode=pint(params,"mode")
+    submode=pint(params,"submode")
 
     #print "Mode: "+str(mode)
     #print "URL: "+str(url)
@@ -411,58 +412,28 @@ def main():
     if mode==None:
         plugin.get_root_menu()
 
-    elif mode==1:
-        if "LDS.org" in name:
-            lds.get_menu()
-        if "BYU TV" in name:
-            byu.get_menu()
+    else:
+      {100: lambda:lds.get_menu(),
+       200: lambda:byu.get_menu(),
+       2: lambda: lds.get_categories(url),
+       3: lambda: lds.resolve_brightcove_req(url),
+       4: lambda: lds.get_video_list(url),
+       5: lambda: plugin.resolve_url(url),
+       6: lambda: byu.play_byu_live(),
+       7: lambda: lds.get_conferences(submode,url,name),
+       8: lambda: byu.get_categories(),
+       9: lambda: byu.get_shows(submode,name),
+       10: lambda: byu.get_seasons(purl(params, "guid")),
+       11: lambda: byu.get_episodes(name,purl(params, "guid"),submode),
+       12: lambda: byu.get_popular(),
+       13: lambda: lds.get_featured(),
 
-    elif mode==2:
-        lds.get_categories(url)
+       # Handle all BYUTV modes
+       14: lambda: mc.broker(params),
+       15: lambda: plugin.download(name,url)
+      }[mode]()
 
-    elif mode==3:
-        lds.resolve_brightcove_req(url)
-
-    elif mode==4:
-        lds.get_video_list(url)
-
-    elif mode==5:
-        plugin.resolve_url(url)
-
-    elif mode==6:
-        byu.play_byu_live()
-
-    elif mode==7:
-        lds.get_conferences(submode,url,name)
-
-    elif mode==8:
-        byu.get_categories()
-
-    elif mode==9:
-        byu.get_shows(submode,name)
-
-    elif mode==10:
-        guid=urllib.unquote_plus(params["guid"])
-        byu.get_seasons(guid)
-
-    elif mode==11:
-        guid=urllib.unquote_plus(params["guid"])
-        byu.get_episodes(name,guid,submode)
-
-    elif mode==12:
-        byu.get_popular()
-
-    elif mode==13:
-        lds.get_featured()
-
-    # Handle all BYUTV modes
-    elif mode==14:
-        mc.broker(params)
-
-    elif mode==15:
-        plugin.download(name,url)
-
-    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+    xbmcplugin.endOfDirectory(HANDLE)
 
 
 if __name__ == '__main__':
